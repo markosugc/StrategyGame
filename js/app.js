@@ -222,7 +222,7 @@
       </section>
 
       <section class="stack">
-        <div class="row" style="justify-content:space-between;align-items:baseline"><h2>Industries</h2><span class="small muted">3 of many to come</span></div>
+        <div class="row" style="justify-content:space-between;align-items:baseline"><h2>Industries</h2><span class="small muted">${C.industries.length} industries, more to come</span></div>
         <div class="grid-3">
           ${C.industries.map((i) => {
             const st = industryStatus(i.id);
@@ -377,7 +377,7 @@
     const st = { q: 0, m: Object.assign({}, SIM.start), history: [], drag: 0, choice: null, phase: "intro" };
     const fmtM = (k, v) => { const d = SIM.metrics.find((x) => x.key === k); return fmtNum(v, d.fmt); };
     const metricsHTML = (prev) => `<div class="metrics">${SIM.metrics.map((mm) => {
-      const v = st.m[mm.key]; const p0 = prev ? prev[mm.key] : null; const d = p0 == null ? null : v - p0;
+      const v = st.m[mm.key]; const p0 = prev ? prev[mm.key] : null; const dd = p0 == null ? null : v - p0; const d = dd == null || Number(dd.toFixed(Math.max(mm.fmt || 0, 1))) === 0 ? null : dd;
       return `<div class="metric"><span class="small muted">${esc(mm.label)}</span><span class="v">${fmtM(mm.key, v)}<span class="small muted"> ${esc(mm.unit)}</span></span>${d == null || Math.abs(d) < 1e-9 ? `<span class="d muted">&nbsp;</span>` : `<span class="d ${d > 0 ? "up" : "down"}">${d > 0 ? "+" : ""}${fmtNum(d, mm.fmt || (Math.abs(d) < 1 ? 1 : 0))}</span>`}</div>`;
     }).join("")}</div>`;
     const timeline = () => `<div class="timeline">${[0, 1, 2, 3].map((i) => `<div class="${i < st.q ? "done" : i === st.q && st.phase !== "final" ? "now" : ""}">Q${i + 1}</div>`).join("")}</div>`;
@@ -387,9 +387,7 @@
       // Underlying momentum each quarter, plus noise.
       const noise = () => (Math.random() - 0.5) * 0.04;
       st.m.revenue = st.m.revenue * (1 + 0.005 + noise() * 0.5 - st.drag / 4);
-      if ("pipeline" in st.m) st.m.pipeline = clamp(st.m.pipeline, 0, 100);
-      ["trust", "reliability", "pipeline"].forEach((k) => { if (k in st.m) st.m[k] = clamp(Math.round(st.m[k]), 0, 100); });
-      if ("share" in st.m) st.m.share = Math.max(0, st.m.share);
+      SIM.metrics.forEach((mm) => { if (["revenue", "margin", "cash"].includes(mm.key)) return; const f = Math.pow(10, mm.fmt || 0); st.m[mm.key] = clamp(Math.round(st.m[mm.key] * f) / f, 0, 100); });
       // Cash moves with profit too.
       st.m.cash = st.m.cash + (st.m.revenue * st.m.margin / 100) * 0.25 * 0.5;
       return prev;
@@ -401,8 +399,7 @@
       let outcome = 20;
       outcome += clamp((m.revenue / s0.revenue - 1) * 100, -10, 10) * 0.6;
       outcome += clamp(m.margin - s0.margin, -5, 5) * 0.8;
-      const soft = ["trust", "reliability", "pipeline", "share"].filter((k) => k in m);
-      soft.forEach((k) => { outcome += clamp((m[k] - s0[k]) / (k === "share" ? 0.2 : 2), -5, 5) * 0.6; });
+      SIM.metrics.filter((mm) => !["revenue", "margin", "cash"].includes(mm.key)).forEach((mm) => { const k = mm.key; outcome += clamp((m[k] - s0[k]) / (mm.scale || (k === "share" ? 0.2 : 2)), -5, 5) * 0.6; });
       if (m.cash < 0) outcome -= 8;
       return clamp(Math.round(decision + clamp(outcome, 0, 40)), 0, 100);
     };
@@ -694,12 +691,12 @@
           return Scripted.next();
         }
         if (sid === "math") {
+          if (state.awaitSoWhat) { state.awaitSoWhat = false; add("int", pick(L.ack)); return Scripted.next(); }
           state.mathTries++;
           const nums = parseNumbers(text, cs.answer.unit);
           const ok = nums.some((n) => Math.abs(n - cs.answer.value) <= cs.answer.tolerance);
           const close = nums.some((n) => Math.abs(n - cs.answer.value) <= Math.abs(cs.answer.value) * 0.1);
           if (ok) { state.mathRight = true; add("int", (set.tone === "supportive" ? "That's right, well done. " : "Correct. ") + "So what does that number tell us?"); state.awaitSoWhat = true; return; }
-          if (state.awaitSoWhat) { state.awaitSoWhat = false; add("int", pick(L.ack)); return Scripted.next(); }
           if (state.mathTries < 2) { add("int", close ? "You're close. Check your steps again." : set.tone === "tough" ? "That's not what I get. Walk me through your math." : "Hmm, I get a different number. Can you walk me through your steps?"); return; }
           add("int", `Let me show you how I'd do it. ${cs.solution}`); return Scripted.next();
         }
@@ -953,11 +950,11 @@ Reply with only JSON: {"scores":{"structure":n,"math":n,"insight":n,"synthesis":
   };
 
   /* ---------- Chart reading ---------- */
-  const CHART_SETS = {
+  const CHART_SETS = Object.assign({
     pharma: { title: "Revenue by therapy area", unit: "$M", series: ["Obesity", "Diabetes", "Oncology", "Immunology"] },
     retail: { title: "Sales by channel", unit: "$M", series: ["Stores", "Online", "Store brand", "Retail media"] },
     energy: { title: "Generation by source", unit: "TWh", series: ["Gas", "Solar", "Wind", "Nuclear"] }
-  };
+  }, C.chartSets || {});
   function makeChart() {
     const indId = pick(Object.keys(CHART_SETS)); const set = CHART_SETS[indId];
     const years = [2021, 2022, 2023, 2024, 2025];

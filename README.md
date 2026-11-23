@@ -15,6 +15,8 @@ Plus drills: timed mental math, chart reading, and fit / McKinsey PEI practice. 
 | Pharma & Healthcare | GLP-1 obesity drugs, direct-to-consumer pricing, payers dropping coverage |
 | Retail & Consumer Goods | 2025 tariffs, trade-down to store brands, GLP-1 shoppers |
 | Energy & Power | AI data center power demand, nuclear deals, Texas grid |
+| Airlines & Travel | Premium demand boom, low-cost carriers struggling, aircraft delivery delays |
+| Industrials & Manufacturing | Transformer shortages, metal tariffs, connected services |
 
 ## Running it
 
@@ -24,4 +26,4 @@ When the page runs inside Claude as an artifact, Claude acts as a live AI interv
 
 ## Adding content
 
-All content lives in `js/content.js`: industries (lessons and quiz), simulations, cases (prompt, facts, structure, exhibit, math answer, brainstorm, curveball, model recommendation) and fit questions. Figures marked "approx." are rounded for practice; refresh the trend notes as news moves.
+All content lives in `js/content.js` and `js/content-2.js`: industries (lessons and quiz), simulations, cases (prompt, facts, structure, exhibit, math answer, brainstorm, curveball, model recommendation) and fit questions. Figures marked "approx." are rounded for practice; refresh the trend notes as news moves.
